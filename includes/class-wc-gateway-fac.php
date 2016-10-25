@@ -1,21 +1,9 @@
 <?php
 
 use Omnipay\Omnipay;
-
 if ( !defined('ABSPATH') ) exit;
-
-/**
- * WC_Gateway_FirstAtlanticCommerce class
- *
- * @extends WC_Payment_Gateway
- */
-class WC_Gateway_FirstAtlanticCommerce extends WC_Payment_Gateway
-{
-    /**
-     * Constructor
-     */
-    public function __construct()
-    {
+class WC_Gateway_FirstAtlanticCommerce extends WC_Payment_Gateway{
+    public function __construct(){
         $this->id                 = 'fac';
         $this->method_title       = __('First Atlantic Commerce', 'wc-gateway-fac');
         $this->method_description = __('First Atlantic Commerce works by adding credit card fields on the checkout and then sending the details to First Atlantic Commerce for verification.', 'wc-gateway-fac');
@@ -33,14 +21,8 @@ class WC_Gateway_FirstAtlanticCommerce extends WC_Payment_Gateway
             //'pre-orders',
             'default_credit_card_form'
         ];
-
-        // Load the form fields
         $this->init_form_fields();
-
-        // Load the settings
         $this->init_settings();
-
-        // User defined settings
         $this->title             = $this->get_option('title');
         $this->description       = $this->get_option('description');
         $this->enabled           = $this->get_option('enabled');
@@ -49,87 +31,45 @@ class WC_Gateway_FirstAtlanticCommerce extends WC_Payment_Gateway
         //$this->saved_cards       = $this->get_option( 'saved_cards' ) === "yes" ? true : false;
         $this->merchant_id       = $this->testmode ? $this->get_option('test_merchant_id') : $this->get_option('merchant_id');
         $this->merchant_password = $this->testmode ? $this->get_option('test_merchant_password') : $this->get_option('merchant_password');
-
         // Hooks
         add_action('admin_notices', [$this, 'admin_notices']);
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
     }
-
-    /**
-     * Notify of issues in wp-admin
-     */
-    public function admin_notices()
-    {
-        if ($this->enabled == 'no')
-        {
+    public function admin_notices(){
+        if ($this->enabled == 'no'){
             return;
         }
-
-        // Check required fields
-        if (!$this->merchant_id)
-        {
+        if (!$this->merchant_id){
             echo '<div class="error"><p>' . sprintf( __( 'First Atlantic Commerce error: Please enter your merchant id <a href="%s">here</a>', 'woocommerce-gateway-fac' ), admin_url( 'admin.php?page=wc-settings&tab=checkout&section=wc_gateway_fac' ) ) . '</p></div>';
             return;
         }
-        elseif (!$this->merchant_password)
-        {
+        elseif (!$this->merchant_password){
             echo '<div class="error"><p>' . sprintf( __( 'First Atlantic Commerce error: Please enter your merchant password <a href="%s">here</a>', 'woocommerce-gateway-fac' ), admin_url( 'admin.php?page=wc-settings&tab=checkout&section=wc_gateway_fac' ) ) . '</p></div>';
             return;
         }
-
-        // Check if enabled and force SSL is disabled
         if ( get_option('woocommerce_force_ssl_checkout') == 'no' ) {
             echo '<div class="error"><p>' . sprintf( __( 'First Atlantic Commerce is enabled, but the <a href="%s">force SSL option</a> is disabled; your checkout may not be secure! Please enable SSL and ensure your server has a valid SSL certificate - First Atlantic Commerce will only work in test mode.', 'woocommerce-gateway-fac' ), admin_url( 'admin.php?page=wc-settings&tab=checkout' ) ) . '</p></div>';
             return;
         }
     }
-
-    /**
-     * Logging method
-     *
-     * @param  string $message
-     *
-     * @return void
-     */
-    public function log($message)
-    {
-        if ( empty($this->log) )
-        {
+    public function log($message){
+        if ( empty($this->log) ){
             $this->log = new WC_Logger();
         }
-
         $this->log->add($this->id, $message);
     }
-
-    /**
-     * Check if the gateway is available for use
-     *
-     * @return bool
-     */
-    public function is_available()
-    {
+    public function is_available(){
         $is_available = parent::is_available();
-
-        // Only allow unencrypted connections when testing
-        if (!is_ssl() && !$this->testmode)
-        {
+        if (!is_ssl() && !$this->testmode){
             $is_available = false;
         }
-
-        // Required fields check
-        if (!$this->merchant_id || !$this->merchant_password)
-        {
+        if (!$this->merchant_id || !$this->merchant_password){
             $is_available = false;
         }
-
         return $is_available;
     }
 
-    /**
-     * Initialise Gateway Settings Form Fields
-     */
-    public function init_form_fields()
-    {
+    public function init_form_fields(){
         $this->form_fields = apply_filters('wc_fac_settings', [
             'enabled' => [
                 'title'       => __('Enable/Disable', 'woocommerce-gateway-fac'),
@@ -198,103 +138,52 @@ class WC_Gateway_FirstAtlanticCommerce extends WC_Payment_Gateway
         ]);
     }
 
-    /**
-     * Setup the gateway object
-     */
-    public function setup_gateway()
-    {
+    public function setup_gateway(){
         $gateway = Omnipay::create('FirstAtlanticCommerce');
-
         $gateway->setMerchantId($this->merchant_id);
         $gateway->setMerchantPassword($this->merchant_password);
 
-        if ($this->testmode)
-        {
+        if ($this->testmode){
             $gateway->setTestMode(true);
         }
-
         return $gateway;
     }
-
-    /**
-     * Output payment fields
-     *
-     * @return void
-     */
-    public function payment_fields()
-    {
-        // Default credit card form
+    public function payment_fields(){
         $this->credit_card_form();
     }
 
-    /**
-     * Validate form fields
-     *
-     * @return bool
-     */
-    public function validate_fields()
-    {
+    public function validate_fields(){
         $validated = true;
 
-        if ( empty($_POST['fac-card-number']) )
-        {
+        if ( empty($_POST['fac-card-number']) ){
             wc_add_notice( $this->get_validation_error( __('Card Number', 'woocommerce-gateway-fac'), $_POST['fac-card-number'] ), 'error' );
             $validated = false;
         }
-        if ( empty($_POST['fac-card-expiry']) )
-        {
+        if ( empty($_POST['fac-card-expiry']) ){
             wc_add_notice( $this->get_validation_error( __('Card Expiry', 'woocommerce-gateway-fac'), $_POST['fac-card-number'] ), 'error' );
             $validated = false;
         }
-        if ( empty($_POST['fac-card-cvc']) )
-        {
+        if ( empty($_POST['fac-card-cvc']) ){
             wc_add_notice( $this->get_validation_error( __('Card Code', 'woocommerce-gateway-fac'), $_POST['fac-card-number'] ), 'error' );
             $validated = false;
         }
-
         return $validated;
     }
 
-    /**
-     * Get error message for form fields
-     *
-     * @param string $field
-     * @param string $type
-     * @return string
-     */
-    protected function get_validation_error($field, $type = 'undefined')
-    {
-        if ( $type === 'invalid' )
-        {
+    protected function get_validation_error($field, $type = 'undefined'){
+        if ( $type === 'invalid' ){
             return sprintf( __( 'Please enter a valid %s.', 'woocommerce-gateway-fac' ), "<strong>$field</strong>" );
         }
-        else
-        {
+        else{
             return sprintf( __( '%s is a required field.', 'woocommerce-gateway-fac' ), "<strong>$field</strong>" );
         }
     }
 
-    /**
-     * Can the order be processed?
-     *
-     * @param WC_Order $order
-     *
-     * @return bool
-     */
-    public function can_process_order($order)
-    {
+    public function can_process_order($order){
         return $order && $order->payment_method == 'fac';
     }
 
-    /**
-     * Process the payment and return the result
-     *
-     * @param int $order_id
-     *
-     * @return array
-     */
-    public function process_payment($order_id)
-    {
+    public function process_payment($order_id){
         $order = new WC_Order($order_id);
 
         if ( !$this->can_process_order($order) ) return;
@@ -302,26 +191,19 @@ class WC_Gateway_FirstAtlanticCommerce extends WC_Payment_Gateway
         $transaction = $order->get_transaction_id();
         $captured    = get_post_meta($order_id, '_fac_captured', true);
 
-        // Skip already captured transactions
         if ($captured) return;
 
-        try
-        {
+        try{
             $gateway = $this->setup_gateway();
-
             $data = [
                 'transactionId' => $order->get_order_number(),
                 'amount'        => $this->get_order_total(),
                 'currency'      => $order->order_currency
             ];
-
-            // Already authorized transactions should be captured
-            if ( $transaction && !$captured )
-            {
+            if ( $transaction && !$captured ){
                 $response = $gateway->capture($data)->send();
             }
-            else
-            {
+            else{
                 $card_number = str_replace( [' ', '-'], '', wc_clean($_POST['fac-card-number']) );
                 $card_cvv    = wc_clean($_POST['fac-card-cvc']);
                 $card_expiry = preg_split('/\s?\/\s?/', wc_clean($_POST['fac-card-expiry']), 2);
@@ -343,128 +225,69 @@ class WC_Gateway_FirstAtlanticCommerce extends WC_Payment_Gateway
                 ];
 
                 // Capture in one pass if enabled, otherwise authorize
-                if ($this->capture)
-                {
+                if ($this->capture){
                     $response = $gateway->purchase($data)->send();
                 }
-                else
-                {
+                else{
                     $response = $gateway->authorize($data)->send();
                 }
             }
 
-            if ( $response->isSuccessful() )
-            {
+            if ( $response->isSuccessful() ){
                 $reference = $response->getTransactionReference();
-
-                // Captured transaction
-                if ( ($transaction && !$captured) || (!$transaction && $this->capture) )
-                {
-                    // Store captured
+                if ( ($transaction && !$captured) || (!$transaction && $this->capture) ){
                     update_post_meta($order_id, '_fac_captured', true);
-
-                    // Complete payment
                     $order->payment_complete($reference);
-
-                    // Add note to order
                     $order->add_order_note( sprintf( __('FAC transaction complete (ID: %s)', 'woocommerce-gateway-fac'), $reference ) );
                 }
-                // Authorized transaction
-                else
-                {
-                    // Store captured
+                else{
                     update_post_meta($order_id, '_transaction_id', $reference, true);
                     update_post_meta($order_id, '_fac_captured', false);
-
-                    // Mark order as on-hold and add note
                     $order->update_status( 'on-hold', sprintf( __('FAC charge authorized (ID: %s). Process the order to take payment, or cancel to remove the pre-authorization.', 'woocommerce-gateway-fac'), $reference ) );
-
-                    // Reduce stock level
                     $order->reduce_order_stock();
                 }
-
-                // Clear cart
                 WC()->cart->empty_cart();
-
-                // Return thank you page redirect
                 return [
                     'result'   => 'success',
                     'redirect' => $this->get_return_url($order)
                 ];
             }
-            else
-            {
+            else{
                 throw new Exception( $response->getMessage(), $response->getCode() );
             }
         }
-        catch (\Exception $e)
-        {
+        catch (\Exception $e){
             $message = 'Transaction Failed: '. $e->getCode() .' – '. $e->getMessage();
-
             $this->log($message);
             $order->add_order_note( __($message, 'woocommerce-gateway-fac') );
-
-            // Friendly declined message
-            if ( in_array( $e->getCode(), [2, 3, 4, 35, 38, 39] ) )
-            {
+            if ( in_array( $e->getCode(), [2, 3, 4, 35, 38, 39] ) ){
                 $message = __('Unfortunately your order cannot be processed as the originating bank/merchant has declined your transaction.', 'woocommerce') .' '. __('Please attempt your purchase again.', 'woocommerce');
             }
-
-            // Friendly error message
-            else
-            {
+            else{
                 $message = __('Unfortunately your order cannot be processed as an error has occured.', 'woocommerce') .' '. __('Please attempt your purchase again.', 'woocommerce');
             }
-
-            if ( !is_admin() || ( defined('DOING_AJAX') && DOING_AJAX ) )
-            {
+            if ( !is_admin() || ( defined('DOING_AJAX') && DOING_AJAX ) ){
                 wc_add_notice($message, 'error');
             }
-
             return;
         }
     }
-
-    /**
-     * Can the order be refunded?
-     *
-     * @param WC_Order $order
-     *
-     * @return bool
-     */
-    public function can_refund_order($order)
-    {
+    public function can_refund_order($order){
         return $order && $order->payment_method == 'fac' && $order->get_transaction_id();
     }
-
-    /**
-     * Refund a charge
-     *
-     * @param int $order_id
-     * @param float $amount
-     *
-     * @return bool
-     */
-    public function process_refund($order_id, $amount = null, $reason = '')
-    {
+    public function process_refund($order_id, $amount = null, $reason = ''){
         $order = wc_get_order($order_id);
-
-        if ( !$this->can_refund_order($order) )
-        {
+        if ( !$this->can_refund_order($order) ){
             $this->log('Refund Failed: No transaction ID for FAC');
             return false;
         }
-
         $transaction = $order->get_transaction_id();
         $captured    = get_post_meta($order_id, '_fac_captured', true);
 
-        if ( is_null($amount) )
-        {
+        if ( is_null($amount) ){
             $amount = $order->get_total();
         }
-
-        try
-        {
+        try{
             $gateway = $this->setup_gateway();
 
             $data = [
@@ -472,32 +295,25 @@ class WC_Gateway_FirstAtlanticCommerce extends WC_Payment_Gateway
                 'amount'        => $amount
             ];
 
-            if ($captured)
-            {
+            if ($captured){
                 $response = $gateway->refund($data)->send();
             }
-            else
-            {
+            else{
                 $response = $gateway->void($data)->send();
             }
 
-            if ( $response->isSuccessful() )
-            {
+            if ( $response->isSuccessful() ){
                 $order->add_order_note( sprintf( __('Refunded %s', 'woocommerce-gateway-fac'), $data['amount'] ) );
                 return true;
             }
-            else
-            {
+            else{
                 throw new Exception( $response->getMessage(), $response->getCode() );
             }
         }
-        catch (\Exception $e)
-        {
+        catch (\Exception $e){
             $message = 'Refund Failed: '. $e->getCode() .' – '. $e->getMessage();
-
             $this->log($message);
             $order->add_order_note( __($message, 'woocommerce-gateway-fac') );
-
             return new WP_Error( 'fac-refund', __($e->getCode() .' – '.$e->getMessage(), 'woocommerce-gateway-fac') );
         }
     }
